@@ -7,7 +7,7 @@ import os, string, argparse, subprocess, distutils.spawn, sys, shutil, random, s
 
 # Constants:
 
-VERSION = 'v1.1.0'
+VERSION = 'v1.2.0'
 VXT = ['mkv', 'mp4', 'm4v', 'mov', 'mpg', 'mpeg', 'avi', 'vob', 'mts', 'm2ts', 'wmv', 'flv']
 SPANISH = 'Spanish'
 ENGLISH = 'English'
@@ -215,7 +215,11 @@ class MediaFile:
       o = subprocess.check_output('%s --Inform="Audio;%%Channel(s)%%" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
       #print '*'+o+'*'
       for i in range(0, audcnt):
-        self.info.audio_channels.append(int(o[0:1]))
+        try:
+          channels_amount = int(o[0:1])
+        except:
+          channels_amount = 0
+        self.info.audio_channels.append(channels_amount)
         if o[1:4] == ' / ':
           o = o[5:]
         else:
@@ -288,6 +292,9 @@ def colorize_green(s):
 def colorize_red(s):
   return '\033[1;31;40m{}\033[0;0m'.format(s)
 
+def colorize_purple(s):
+  return '\033[1;35;40m{}\033[0;0m'.format(s)
+
 def colorize_yellow(s):
   return '\033[1;33;40m{}\033[0;0m'.format(s)
 
@@ -309,7 +316,7 @@ def analyze_video_file(f):
   v = MediaFile(f)
 
   if not (v.extension in VXT):
-    print '* ERROR: input file is not a video file (skipping)'
+    #print '* ERROR: input file is not a video file (skipping)'
     return
 
   f = v.input_file[:50];
@@ -366,18 +373,20 @@ def analyze_video_file(f):
   if s2 == 'Spa' and f2 == 'F':
     sub_spa = True
 
-  w = 2
-  if audio_spa:
-    w = w - 1
-  if sub_spa:
-    w = w - 1
+  w = 0
+  if not audio_spa:
+    w = w + 2
+  if not sub_spa:
+    w = w + 1
 
   if w == 0:
     w_string = '  '
   if w == 1:
     w_string = 'W1'
-  if w >= 2:
+  if w == 2:
     w_string = 'W2'
+  if w >= 3:
+    w_string = 'W3'
 
   salida = '{:50} | {:3}  {:3} | {:3} {}  {:3} {} {}'.format(f, a1, a2, s1, f1, s2, f2, w_string)
 
@@ -385,8 +394,10 @@ def analyze_video_file(f):
     salida = colorize_green(salida)
   if w == 1:
     salida = colorize_yellow(salida)
-  if w >= 2:
+  if w == 2:
     salida = colorize_red(salida)
+  if w >= 3:
+    salida = colorize_purple(salida)
 
   print salida
 
