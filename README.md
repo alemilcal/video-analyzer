@@ -5,5 +5,6 @@ Python script that analyzes video files looking for SPANISH audio/subtitle track
 Dependencies:
 
   * MediaInfo
+  * MKVPropEdit
 
 Compatibility: Linux & Windows

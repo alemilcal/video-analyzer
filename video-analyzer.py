@@ -7,7 +7,7 @@ import os, string, argparse, subprocess, distutils.spawn, sys, shutil, random, s
 
 # Constants:
 
-VERSION = 'v1.2.0'
+VERSION = 'v1.3.0'
 VXT = ['mkv', 'mp4', 'm4v', 'mov', 'mpg', 'mpeg', 'avi', 'vob', 'mts', 'm2ts', 'wmv', 'flv']
 SPANISH = 'Spanish'
 ENGLISH = 'English'
@@ -34,14 +34,39 @@ else:
 # Options:
 
 parser = argparse.ArgumentParser(description = 'Video analyzer (%s)'%(VERSION))
-#parser.add_argument('-a', nargs = 1, help = 'Audio track -first track is 0- (language chosen by default)')
+parser.add_argument('-a', nargs = 2, help = 'Tag audio track (track number starting at 1 + jpn/lat/spa/...)')
+parser.add_argument('-s', nargs = 2, help = 'Tag sub track (track number starting at 1 + jpn/lat/spa/...)')
+parser.add_argument('-f', nargs = 2, help = 'Tag sub track as forced (track number starting at 1 + 0/1)')
 #parser.add_argument('-b', action = 'store_true', help = 'Generate BIF files [BETA]')
 #parser.add_argument('--vose', action = 'store_true', help = 'Treat subtitle as forced')
 parser.add_argument('input', nargs='*', help = 'input file(s) (if missing process all video files)')
 parser.add_argument('--upload', action = 'store_true', help = 'Upload script to GITHUB')
+parser.add_argument('-z', action = 'store_true', help = 'dry run')
 args = parser.parse_args()
 
 # Auxiliar functions:
+
+def utf8_filter(f):
+  f = f.replace('á', 'a')
+  f = f.replace('é', 'e')
+  f = f.replace('í', 'i')
+  f = f.replace('ó', 'o')
+  f = f.replace('ú', 'u')
+  f = f.replace('ü', 'u')
+  f = f.replace('ñ', 'n')
+  f = f.replace('ç', 'c')
+  f = f.replace('Á', 'A')
+  f = f.replace('É', 'E')
+  f = f.replace('Í', 'I')
+  f = f.replace('Ó', 'O')
+  f = f.replace('Ú', 'U')
+  f = f.replace('Ü', 'U')
+  f = f.replace('Ñ', 'N')
+  f = f.replace('¿', '')
+  f = f.replace('?', '')
+  f = f.replace('¡', '')
+  f = f.replace('!', '')
+  return f
 
 def language_code(name):
   if name == SPANISH:
@@ -72,6 +97,7 @@ class MediaInfo:
     self.audio_descriptions = []
     self.audio_default = []
     self.sub_languages = []
+    self.sub_titles = []
     self.sub_formats = []
     self.sub_forced = []
 
@@ -202,7 +228,6 @@ class MediaFile:
       o = subprocess.check_output('%s --Inform="General;%%Audio_Language_List%%" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
       o = o.rstrip()
       o = o.split(' / ')
-      #print '<%s>'%(o) #####
       for i in range(0, audcnt):
         if len(o) >= i + 1:
           if o[i] == '':
@@ -210,7 +235,6 @@ class MediaFile:
         else:
           o.append('Unknown')
         self.info.audio_languages.append(o[i])
-      #print self.info.audio_languages #####
       # Audio Channels
       o = subprocess.check_output('%s --Inform="Audio;%%Channel(s)%%" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
       #print '*'+o+'*'
@@ -259,7 +283,6 @@ class MediaFile:
         o = o.rstrip()
         o = o.split(' / ')
         self.info.sub_languages = o
-        #print self.info.sub_languages
         # Subtitle formats
         o = subprocess.check_output('%s --Inform="General;%%Text_Format_List%%" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
         o = o.rstrip()
@@ -282,6 +305,7 @@ class MediaFile:
         for i in range(0, len(o) - 1):
           if ('forz' in o[i].lower()) or ('forc' in o[i].lower()):
             self.info.sub_forced[i] = True
+          self.info.sub_titles.append(utf8_filter(o[i]))
       #self.info.print_info()
 
 # Subroutines:
@@ -303,13 +327,13 @@ def colorize_blue(s):
 
 def execute_command(c):
   if NICE_BIN != '':
-    c = NICE_BIN + ' ' + c # ' -n 15 ' + c
-  #print '> Executing: %s'%(c)
-  #if not args.z:
-  os.system(c)
+    c = NICE_BIN + ' ' + c
+  print '> Executing: %s'%(c)
+  if not args.z:
+    os.system(c)
 
 def print_bar():
-  print colorize_blue('-' * 79)
+  print colorize_blue('-' * 140)
 
 def analyze_video_file(f):
 
@@ -319,36 +343,20 @@ def analyze_video_file(f):
     #print '* ERROR: input file is not a video file (skipping)'
     return
 
-  f = v.input_file[:50];
-
-  f = f.replace('á', 'a')
-  f = f.replace('é', 'e')
-  f = f.replace('í', 'i')
-  f = f.replace('ó', 'o')
-  f = f.replace('ú', 'u')
-  f = f.replace('ü', 'u')
-  f = f.replace('ñ', 'n')
-  f = f.replace('ç', 'c')
-  f = f.replace('Á', 'A')
-  f = f.replace('É', 'E')
-  f = f.replace('Í', 'I')
-  f = f.replace('Ó', 'O')
-  f = f.replace('Ú', 'U')
-  f = f.replace('Ü', 'U')
-  f = f.replace('Ñ', 'N')
-  f = f.replace('¿', '')
-  f = f.replace('?', '')
-  f = f.replace('¡', '')
-  f = f.replace('!', '')
-
-  while len(f) < 50:
+  f = utf8_filter(v.input_file)
+  while len(f) > 97:
+    f = f[:47] + '...' + f[len(f) - 47:]
+  while len(f) < 97:
     f = f + ' '
+
   a1 = '   '
   a2 = '   '
   s1 = '   '
   s2 = '   '
   f1 = ' '
   f2 = ' '
+  t1 = '      '
+  t2 = '      '
   if len(v.info.audio_languages) > 0:
     a1 = v.info.audio_languages[0][:3];
   if len(v.info.audio_languages) > 1:
@@ -357,10 +365,12 @@ def analyze_video_file(f):
     s1 = v.info.sub_languages[0][:3];
     if v.info.sub_forced[0]:
       f1 = 'F'
+    t1 = v.info.sub_titles[0][:6];
   if len(v.info.sub_languages) > 1:
     s2 = v.info.sub_languages[1][:3];
     if v.info.sub_forced[1]:
       f2 = 'F'
+    t2 = v.info.sub_titles[1][:6];
 
   audio_spa = False
   sub_spa = False
@@ -388,7 +398,7 @@ def analyze_video_file(f):
   if w >= 3:
     w_string = 'W3'
 
-  salida = '{:50} | {:3}  {:3} | {:3} {}  {:3} {} {}'.format(f, a1, a2, s1, f1, s2, f2, w_string)
+  salida = '{:97} | {:3}  {:3} | {:3} {} {:6}  {:3} {} {:6} {}'.format(f, a1, a2, s1, f1, t1, s2, f2, t2, w_string)
 
   if w == 0:
     salida = colorize_green(salida)
@@ -402,7 +412,7 @@ def analyze_video_file(f):
   print salida
 
 def process_directory(dir):
-  lis = os.listdir(dir)
+  lis = sorted(os.listdir(dir))
   for arc in lis:
     rut = dir + '/' + arc
     if os.path.isdir(rut):
@@ -412,6 +422,20 @@ def process_directory(dir):
 
 def process_file(f):
   analyze_video_file(f)
+  if args.a or args.s or args.f:
+    if args.a:
+      o = '--edit track:a{} --set language={}'.format(args.a[0], args.a[1])
+      c = '{} "{}" {}'.format(MKVPROPEDIT_BIN, f, o)
+      execute_command(c)
+    if args.s:
+      o = '--edit track:s{} --set language={}'.format(args.s[0], args.s[1])
+      c = '{} "{}" {}'.format(MKVPROPEDIT_BIN, f, o)
+      execute_command(c)
+    if args.f:
+      o = '--edit track:s{} --set flag-forced={}'.format(args.f[0], args.f[1])
+      c = '{} "{}" {}'.format(MKVPROPEDIT_BIN, f, o)
+      execute_command(c)
+    analyze_video_file(f)
 
 def verify_software(b, critical):
   if not b == '':
@@ -434,8 +458,9 @@ else:
   print
   verify_software(MEDIAINFO_BIN, True)
   verify_software(NICE_BIN, True)
+  verify_software(MKVPROPEDIT_BIN, True)
   print
-  print colorize_blue('{:50}   {:3}  {:3}   {:5}  {:5} {}'.format('File', 'Au1', 'Au2', 'Sub1', 'Sub2', 'WL'))
+  print colorize_blue('{:97}   {:3}  {:3}   {:12}  {:12} {}'.format('File', 'Au1', 'Au2', 'Sub1', 'Sub2', 'WL'))
   print_bar()
   if args.input:
     for f in args.input:
