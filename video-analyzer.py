@@ -7,7 +7,7 @@ import os, string, argparse, subprocess, distutils.spawn, sys, shutil, random, s
 
 # Constants:
 
-VERSION = 'v1.4.0'
+VERSION = 'v1.4.1'
 VXT = ['mkv', 'mp4', 'm4v', 'mov', 'mpg', 'mpeg', 'avi', 'vob', 'mts', 'm2ts', 'wmv', 'flv']
 SPANISH = 'Spanish'
 ENGLISH = 'English'
