@@ -7,11 +7,12 @@ import os, string, argparse, subprocess, distutils.spawn, sys, shutil, random, s
 
 # Constants:
 
-VERSION = 'v1.3.0'
+VERSION = 'v1.4.0'
 VXT = ['mkv', 'mp4', 'm4v', 'mov', 'mpg', 'mpeg', 'avi', 'vob', 'mts', 'm2ts', 'wmv', 'flv']
 SPANISH = 'Spanish'
 ENGLISH = 'English'
 JAPANESE = 'Japanese'
+UNDETERMINED = 'Undetermined'
 
 if os.name == 'posix':
   FFMPEG_BIN = 'ffmpeg'
@@ -34,8 +35,8 @@ else:
 # Options:
 
 parser = argparse.ArgumentParser(description = 'Video analyzer (%s)'%(VERSION))
-parser.add_argument('-a', nargs = 2, help = 'Tag audio track (track number starting at 1 + jpn/lat/spa/...)')
-parser.add_argument('-s', nargs = 2, help = 'Tag sub track (track number starting at 1 + jpn/lat/spa/...)')
+parser.add_argument('-a', nargs = 2, help = 'Tag audio track (track number starting at 1 + jpn/lat/spa/und/...)')
+parser.add_argument('-s', nargs = 2, help = 'Tag sub track (track number starting at 1 + jpn/lat/spa/und/...)')
 parser.add_argument('-f', nargs = 2, help = 'Tag sub track as forced (track number starting at 1 + 0/1)')
 #parser.add_argument('-b', action = 'store_true', help = 'Generate BIF files [BETA]')
 #parser.add_argument('--vose', action = 'store_true', help = 'Treat subtitle as forced')
@@ -78,7 +79,10 @@ def language_code(name):
       if name == JAPANESE:
         return 'jpn'
       else:
-        return 'unk'
+        if name == UNDETERMINED:
+          return 'und'
+        else:
+          return 'unk'
 
 def boolean2integer(b):
   if b:
@@ -249,17 +253,17 @@ class MediaFile:
         else:
           o = o[1:]
       # Audiodescription
-      o = subprocess.check_output('%s --Inform="Audio;%%Title%%***" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
-      s = o.split('***')
+      o = subprocess.check_output('%s --Inform="Audio;%%Title%%#@#" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
+      s = o.split('#@#')
       for t in range(0, len(s) - 1):
         if ('descri' in s[t].lower()) or ('comenta' in s[t].lower()) or ('comment' in s[t].lower()):
           self.info.audio_descriptions.append(True)
         else:
           self.info.audio_descriptions.append(False)
       # Audio default
-      o = subprocess.check_output('%s --Inform="Audio;%%Default%%/" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
+      o = subprocess.check_output('%s --Inform="Audio;%%Default%%#@#" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
       o = o.rstrip()
-      o = o.split('/')
+      o = o.split('#@#')
       self.info.audio_default = []
       for i in range(0, len(o) - 1):
         if o[i] == 'Yes':
@@ -299,9 +303,9 @@ class MediaFile:
           else:
             self.info.sub_forced.append(False)
         # Subtitle forced (by "Title" field)
-        o = subprocess.check_output('%s --Inform="Text;%%Title%%/" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
+        o = subprocess.check_output('%s --Inform="Text;%%Title%%#@#" "%s"'%(MEDIAINFO_BIN, self.input_file), shell=True)
         o = o.rstrip()
-        o = o.split('/')
+        o = o.split('#@#')
         for i in range(0, len(o) - 1):
           if ('forz' in o[i].lower()) or ('forc' in o[i].lower()):
             self.info.sub_forced[i] = True
