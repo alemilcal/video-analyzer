@@ -7,7 +7,7 @@ import os, string, argparse, subprocess, distutils.spawn, sys, shutil, random, s
 
 # Constants:
 
-VERSION = 'v1.4.1'
+VERSION = 'v1.5.1'
 VXT = ['mkv', 'mp4', 'm4v', 'mov', 'mpg', 'mpeg', 'avi', 'vob', 'mts', 'm2ts', 'wmv', 'flv']
 SPANISH = 'Spanish'
 ENGLISH = 'English'
@@ -337,7 +337,7 @@ def execute_command(c):
     os.system(c)
 
 def print_bar():
-  print colorize_blue('-' * 140)
+  print colorize_blue('-' * 132)
 
 def analyze_video_file(f):
 
@@ -348,23 +348,31 @@ def analyze_video_file(f):
     return
 
   f = utf8_filter(v.input_file)
-  while len(f) > 97:
-    f = f[:47] + '...' + f[len(f) - 47:]
-  while len(f) < 97:
+  #while len(f) > 68:
+  #  f = f[:33] + '...' + f[len(f) - 32:]
+  if len(f) > 68:
+    f = f[:65] + '...'
+  while len(f) < 68:
     f = f + ' '
 
   a1 = '   '
   a2 = '   '
+  a3 = '   '
   s1 = '   '
   s2 = '   '
+  s3 = '   '
   f1 = ' '
   f2 = ' '
+  f3 = ' '
   t1 = '      '
   t2 = '      '
+  t3 = '      '
   if len(v.info.audio_languages) > 0:
     a1 = v.info.audio_languages[0][:3];
   if len(v.info.audio_languages) > 1:
     a2 = v.info.audio_languages[1][:3];
+  if len(v.info.audio_languages) > 2:
+    a3 = v.info.audio_languages[2][:3];
   if len(v.info.sub_languages) > 0:
     s1 = v.info.sub_languages[0][:3];
     if v.info.sub_forced[0]:
@@ -375,6 +383,11 @@ def analyze_video_file(f):
     if v.info.sub_forced[1]:
       f2 = 'F'
     t2 = v.info.sub_titles[1][:6];
+  if len(v.info.sub_languages) > 2:
+    s3 = v.info.sub_languages[2][:3];
+    if v.info.sub_forced[2]:
+      f3 = 'F'
+    t3 = v.info.sub_titles[2][:6];
 
   audio_spa = False
   sub_spa = False
@@ -382,9 +395,13 @@ def analyze_video_file(f):
     audio_spa = True
   if a2 == 'Spa':
     audio_spa = True
+  if a3 == 'Spa':
+    audio_spa = True
   if s1 == 'Spa' and f1 == 'F':
     sub_spa = True
   if s2 == 'Spa' and f2 == 'F':
+    sub_spa = True
+  if s3 == 'Spa' and f3 == 'F':
     sub_spa = True
 
   w = 0
@@ -402,7 +419,7 @@ def analyze_video_file(f):
   if w >= 3:
     w_string = 'W3'
 
-  salida = '{:97} | {:3}  {:3} | {:3} {} {:6}  {:3} {} {:6} {}'.format(f, a1, a2, s1, f1, t1, s2, f2, t2, w_string)
+  salida = '{:68} | {:3} {:3} {:3} | {:3} {} {:6} | {:3} {} {:6} | {:3} {} {:6} | {}'.format(f, a1, a2, a3, s1, f1, t1, s2, f2, t2, s3, f3, t3, w_string)
 
   if w == 0:
     salida = colorize_green(salida)
@@ -464,7 +481,7 @@ else:
   verify_software(NICE_BIN, True)
   verify_software(MKVPROPEDIT_BIN, True)
   print
-  print colorize_blue('{:97}   {:3}  {:3}   {:12}  {:12} {}'.format('File', 'Au1', 'Au2', 'Sub1', 'Sub2', 'WL'))
+  print colorize_blue('{:68}   {:3} {:3} {:3}   {:12}   {:12}   {:12}   {}'.format('File', 'Au1', 'Au2', 'Au3', 'Sub1', 'Sub2', 'Sub3', 'WL'))
   print_bar()
   if args.input:
     for f in args.input:
